@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+
+    <!--setInterval实时显示时间-->
+    <p id="time1" style="color: blueviolet;"></p>
+    <script>
+        function mytime(){
+            var a = new Date();
+            var b = a.toLocaleTimeString();
+            var c = a.toLocaleDateString();
+            document.getElementById("time1").innerHTML = c+"&nbsp"+b;
+        }
+        setInterval(function() {mytime()},1000);
+    </script>
+
+    <title>pojo、dao、service生成工具</title>
+
+    <script src="http://www.jq22.com/jquery/jquery-1.10.2.js"></script>
+
+    <link rel="stylesheet" href="css/toastr.css" type="text/css">
+    <script src="js/toastr.js" type="text/javascript"></script>
+
+
+    <!-- 3.0 -->
+    <link href="http://libs.baidu.com/bootstrap/3.0.3/css/bootstrap.min.css" rel="stylesheet">
+    <script src="http://libs.baidu.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+
+    <script type="text/javascript" src="js/bootstrap-select.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap-select.css">
+
+</head>
+<body>
+<h2>POJO,Dao生成工具</h2>
+
+
+<form action="xxx"  >
+    数据库名:
+    <select name="dataName" id="dataName" class="selectpicker bla bla bli" multiple
+            data-live-search="true" data-live-search-placeholder="请选择数据库名" data-actions-box="true">
+
+    </select>
+
+    <br>
+    表名:
+    <select name="tableName" id="tableName" class="selectpicker bla bla bli" multiple data-live-search="true">
+
+    </select>
+
+    <br>
+    包名(默认com.gysoft.impl):<input type="text" name="basePackage"  id="basePackage" value="com.gysoft.impl">
+    <br>
+    <br>
+    <br>
+    <input type="button" value="点击生成pojo、dao、service"  id="send">
+</form>
+
+<script>
+    $(function () {    //自定义参数
+        toastr.options = {
+            closeButton: false,  	//是否显示关闭按钮（提示框右上角关闭按钮）。
+            debug: false,  			//是否为调试。
+            progressBar: true,  	//是否显示进度条（设置关闭的超时时间进度条）
+            positionClass: "toast-top-center",  	//消息框在页面显示的位置
+            onclick: null,  		//点击消息框自定义事件
+            showDuration: "300",  	//显示动作时间
+            hideDuration: "1000",  	//隐藏动作时间
+            timeOut: "5000",  		//自动关闭超时时间
+            extendedTimeOut: "1000",
+            showEasing: "swing",
+            hideEasing: "linear",
+            showMethod: "fadeIn",  	//显示的方式，和jquery相同
+            hideMethod: "fadeOut"  	//隐藏的方式，和jquery相同
+            //等其他参数
+        };
+    });
+
+    $(function () {
+        $('.selectpicker').selectpicker({
+            'selectedText': 'cat'
+        });
+    });
+
+    $(function () {
+        $.ajax({
+            type:"GET",
+            url:"http://localhost:8092/code/getListDataBase",
+            data: {},
+            traditional: true,//这里设置为true
+            success:function(data){
+                console.log(data);
+                for(var i=0;i<data.length;i++){
+                    var html = "<option value='" +data[i]+ "'>"+data[i]+"</option>";
+                    $('#dataName').append(html)
+                }
+                //拼接完数据后需要刷新下，否则数据无法显示
+                $('.selectpicker').selectpicker('refresh');
+                $('.selectpicker').selectpicker('show');
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                toastr.error("there is something wrong!");
+                toastr.error(XMLHttpRequest.status);
+                toastr.error(XMLHttpRequest.readyState);
+                toastr.error(textStatus);
+                toastr.error(errorThrown);
+            }
+        });
+    });
+
+</script>
+
+<script type="text/javascript">
+
+
+    $('#dataName').change(function(){
+        //清空tableName
+        $('#tableName').empty();
+        //数据库名数组
+        var dataNameArr = [];
+
+        //多选下拉框这里是数组
+        var dataBase = $('#dataName').selectpicker('val');
+        for(var i=0;i<dataBase.length;i++){
+            dataNameArr.push(dataBase[i]);
+        }
+
+        $.ajax({
+            type:"GET",
+            url:"http://localhost:8092/code/getListTableName",
+            data: {"dataBase":dataNameArr},//直接传数组到后台
+            traditional: true,//这里设置为true
+            success:function(data){
+                console.log(data);
+                for(var i=0;i<data.length;i++){
+                    var html = "<option value='" +data[i].dataBase+ "'>"+data[i].tableName+"</option>";
+                    $('#tableName').append(html)
+                }
+                //拼接完数据后需要刷新下，否则数据无法显示
+                $('.selectpicker').selectpicker('refresh');
+                $('.selectpicker').selectpicker('show');
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                toastr.error("there is something wrong!");
+                toastr.error(XMLHttpRequest.status);
+                toastr.error(XMLHttpRequest.readyState);
+                toastr.error(textStatus);
+                toastr.error(errorThrown);
+            }
+        });
+
+    });
+
+
+    $("#send").click(function(){
+
+        var basePckage = $("#basePackage").val();
+        //获取tableName选中项
+        var listsqlParm = [];
+        var options = $("#tableName option:selected"); //获取选中的项
+
+        //参数校验
+        if(basePckage == ""){
+            toastr.error('请输入包名！');
+            return
+        }
+        if(options.length == 0){
+            toastr.error('请选择要生成的数据库表！');
+            return
+        }
+
+        for(var i=0;i<options.length;i++){
+            var option = $(options[i]);
+            console.log(option.val(),option.text());
+            var TableParam={
+                "dataName":option.val(),
+                "tableName":option.text(),
+                "basePackage":basePckage
+            }
+            listsqlParm.push(TableParam)
+        }
+
+        var codeParam = {"listParam":listsqlParm};
+        console.log(listsqlParm);
+
+        $.ajax({
+            type:"POST",
+            url:"http://localhost:8092/code/test1",
+            contentType: "application/json; charset=utf-8",
+            dataType:"json",
+            data: JSON.stringify(codeParam),
+            success:function(data){
+                console.log(data.msg);
+                if(data.status == 201){
+                    toastr.error(data.msg);
+                }else{
+                    toastr.success(data.msg);
+                    //触发文件下载
+                    var fileId = data.fileId;
+                    download(fileId);
+                }
+
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                toastr.error("there is something wrong!");
+                toastr.error(XMLHttpRequest.status);
+                toastr.error(XMLHttpRequest.readyState);
+                toastr.error(textStatus);
+                toastr.error(errorThrown);
+            }
+        });
+    });
+
+    //文件下载
+    function download(fileId){
+        var aLink = document.createElement('a');
+        // aLink.download = "文件名";
+        aLink.href = "http://localhost:8092/code/download/?fileId="+fileId;
+        document.body.appendChild(aLink);
+        aLink.click();
+        document.body.removeChild(aLink);
+    }
+
+
+</script>
+
+</body>
+</html>
